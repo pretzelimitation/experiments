@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Career Similarity Explorer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background-color: #f9f9f9; }
+    #controls { width: 800px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    #career-select { padding: 6px 10px; font-size: 1rem; }
+    #central-stats { background: rgba(255,255,255,0.8); padding: 8px; border-radius: 4px; font-size: 0.9rem; max-width: 300px; }
+    #central-stats div { margin-bottom: 4px; }
+    #graph { width: 800px; height: 600px; border: 1px solid #ccc; background-color: #fff; }
+    .link.central { stroke: #333; stroke-opacity: 1; }
+    .link.peripheral { stroke: #aaa; stroke-opacity: 0.3; }
+    .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+    .tooltip { padding: 6px 10px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px; font-size: 0.9rem; max-width: 200px; }
+    #hover-stats { position: absolute; top: 20px; right: 20px; display: none; pointer-events: none; z-index: 10; }
+    .more { color: #4caf50; }
+    .less { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <select id="career-select"></select>
+    <div id="central-stats"></div>
+  </div>
+  <div id="graph-container" style="position: relative;">
+    <svg id="graph"></svg>
+    <div id="hover-stats" class="tooltip"></div>
+  </div>
+
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <script>
+    const width = 800, height = 600;
+    const criteria = ['Creativity','Analytical','Social','Physical','Technical','Management','Detail','StressTol','Variety'];
+const careers = [
+      { id: 'doctor', name: 'Doctor', ratings: [0.2,0.9,0.8,0.3,0.7,0.6,0.9,0.8,0.4] },
+      { id: 'nurse', name: 'Nurse', ratings: [0.2,0.8,0.9,0.4,0.6,0.5,0.8,0.9,0.3] },
+      { id: 'software_engineer', name: 'Software Engineer', ratings: [0.3,0.95,0.4,0.1,0.9,0.4,0.8,0.6,0.5] },
+      { id: 'data_scientist', name: 'Data Scientist', ratings: [0.4,0.9,0.5,0.1,0.9,0.5,0.9,0.5,0.4] },
+      { id: 'teacher', name: 'Teacher', ratings: [0.5,0.7,0.9,0.2,0.4,0.7,0.7,0.6,0.6] },
+      { id: 'psychologist', name: 'Psychologist', ratings: [0.4,0.8,0.9,0.2,0.5,0.5,0.8,0.7,0.4] },
+      { id: 'mechanic', name: 'Mechanic', ratings: [0.1,0.6,0.4,0.9,0.8,0.3,0.7,0.4,0.2] },
+      { id: 'architect', name: 'Architect', ratings: [0.9,0.7,0.5,0.2,0.8,0.5,0.9,0.4,0.7] },
+      { id: 'lawyer', name: 'Lawyer', ratings: [0.4,0.9,0.7,0.1,0.5,0.8,0.9,0.7,0.3] },
+      { id: 'accountant', name: 'Accountant', ratings: [0.2,0.95,0.3,0.1,0.7,0.6,0.95,0.6,0.2] },
+      { id: 'project_manager', name: 'Project Manager', ratings: [0.5,0.8,0.9,0.2,0.5,0.9,0.8,0.7,0.5] },
+      { id: 'marketing_manager', name: 'Marketing Manager', ratings: [0.7,0.7,0.9,0.2,0.5,0.8,0.7,0.6,0.8] },
+      { id: 'graphic_designer', name: 'Graphic Designer', ratings: [0.9,0.5,0.6,0.1,0.6,0.4,0.7,0.4,0.9] },
+      { id: 'civil_engineer', name: 'Civil Engineer', ratings: [0.3,0.8,0.4,0.7,0.9,0.5,0.8,0.6,0.3] },
+      { id: 'electrician', name: 'Electrician', ratings: [0.2,0.5,0.4,0.9,0.8,0.3,0.7,0.5,0.2] },
+      { id: 'plumber', name: 'Plumber', ratings: [0.1,0.5,0.4,0.9,0.7,0.3,0.7,0.5,0.2] },
+      { id: 'chef', name: 'Chef', ratings: [0.3,0.6,0.8,0.9,0.4,0.4,0.6,0.6,0.6] },
+      { id: 'pharmacist', name: 'Pharmacist', ratings: [0.2,0.9,0.7,0.2,0.7,0.5,0.9,0.7,0.3] },
+      { id: 'veterinarian', name: 'Veterinarian', ratings: [0.2,0.8,0.8,0.5,0.6,0.5,0.8,0.7,0.4] },
+      { id: 'pilot', name: 'Pilot', ratings: [0.3,0.7,0.5,0.8,0.6,0.6,0.7,0.6,0.5] },
+      { id: 'ux_designer', name: 'UX Designer', ratings: [0.8,0.6,0.6,0.1,0.6,0.4,0.8,0.5,0.9] },
+      { id: 'sys_admin', name: 'System Administrator', ratings: [0.4,0.8,0.5,0.2,0.9,0.5,0.9,0.7,0.4] },
+      { id: 'biologist', name: 'Biologist', ratings: [0.5,0.85,0.4,0.3,0.8,0.4,0.9,0.5,0.6] },
+      { id: 'journalist', name: 'Journalist', ratings: [0.7,0.75,0.8,0.3,0.3,0.5,0.7,0.8,0.9] },
+      { id: 'civil_servant', name: 'Civil Servant', ratings: [0.3,0.7,0.6,0.2,0.4,0.7,0.8,0.6,0.5] },
+      { id: 'entrepreneur', name: 'Entrepreneur', ratings: [0.9,0.8,0.9,0.2,0.5,0.9,0.6,0.9,0.9] },
+      { id: 'real_estate_agent', name: 'Real Estate Agent', ratings: [0.4,0.6,0.9,0.2,0.3,0.7,0.5,0.7,0.8] },
+      { id: 'firefighter', name: 'Firefighter', ratings: [0.2,0.6,0.8,0.9,0.7,0.5,0.6,0.9,0.7] },
+      { id: 'police_officer', name: 'Police Officer', ratings: [0.3,0.7,0.8,0.9,0.6,0.5,0.8,0.9,0.6] },
+      { id: 'dentist', name: 'Dentist', ratings: [0.3,0.9,0.7,0.3,0.85,0.4,0.9,0.8,0.4] },
+      { id: 'data_engineer', name: 'Data Engineer', ratings: [0.3,0.9,0.5,0.1,0.9,0.5,0.8,0.5,0.4] },
+      { id: 'network_engineer', name: 'Network Engineer', ratings: [0.2,0.8,0.4,0.3,0.9,0.4,0.7,0.5,0.3] },
+      { id: 'chemical_engineer', name: 'Chemical Engineer', ratings: [0.3,0.85,0.3,0.2,0.9,0.4,0.8,0.5,0.3] },
+      { id: 'research_scientist', name: 'Research Scientist', ratings: [0.5,0.9,0.4,0.2,0.8,0.5,0.9,0.4,0.5] },
+      { id: 'social_worker', name: 'Social Worker', ratings: [0.4,0.7,0.9,0.2,0.3,0.6,0.7,0.8,0.6] },
+      { id: 'artist', name: 'Artist', ratings: [0.9,0.4,0.5,0.1,0.4,0.3,0.6,0.4,0.9] },
+      { id: 'musician', name: 'Musician', ratings: [0.8,0.4,0.6,0.1,0.3,0.3,0.5,0.3,0.9] },
+      { id: 'actor', name: 'Actor', ratings: [0.8,0.4,0.7,0.1,0.3,0.4,0.5,0.3,0.9] },
+      { id: 'writer', name: 'Writer', ratings: [0.9,0.5,0.7,0.1,0.3,0.4,0.6,0.5,0.9] },
+      { id: 'barista', name: 'Barista', ratings: [0.3,0.5,0.8,0.4,0.2,0.3,0.6,0.6,0.5] },
+      { id: 'photographer', name: 'Photographer', ratings: [0.8,0.5,0.5,0.1,0.4,0.3,0.6,0.4,0.8] },
+      { id: 'translator', name: 'Translator', ratings: [0.7,0.6,0.9,0.1,0.3,0.4,0.7,0.5,0.8] },
+      { id: 'data_analyst', name: 'Data Analyst', ratings: [0.4,0.9,0.5,0.1,0.9,0.5,0.8,0.5,0.4] },
+      { id: 'ux_researcher', name: 'UX Researcher', ratings: [0.8,0.7,0.6,0.1,0.6,0.5,0.8,0.6,0.8] },
+      { id: 'biochemist', name: 'Biochemist', ratings: [0.4,0.9,0.5,0.2,0.8,0.4,0.9,0.5,0.6] },
+      { id: 'astronomer', name: 'Astronomer', ratings: [0.4,0.9,0.3,0.2,0.8,0.4,0.9,0.4,0.5] },
+      { id: 'economist', name: 'Economist', ratings: [0.5,0.95,0.6,0.1,0.5,0.7,0.8,0.6,0.4] },
+      { id: 'urban_planner', name: 'Urban Planner', ratings: [0.4,0.8,0.6,0.3,0.7,0.6,0.8,0.5,0.5] },
+      { id: 'geologist', name: 'Geologist', ratings: [0.4,0.85,0.5,0.2,0.8,0.4,0.8,0.5,0.5] },
+      { id: 'environmental_scientist', name: 'Environmental Scientist', ratings: [0.5,0.85,0.6,0.2,0.8,0.5,0.8,0.7,0.6] }
+    ];
+    const selectEl = d3.select('#career-select');
+    selectEl.selectAll('option').data(careers).enter().append('option')
+      .attr('value', d => d.id).text(d => d.name);
+    selectEl.on('change', updateGraph).property('value', careers[0].id);
+
+    const svg = d3.select('#graph').attr('width', width).attr('height', height);
+    const hoverStats = d3.select('#hover-stats');
+
+    function cosineDistance(a, b) {
+      let dot = 0, ma = 0, mb = 0;
+      for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; ma += a[i]*a[i]; mb += b[i]*b[i]; }
+      return 1 - dot/(Math.sqrt(ma)*Math.sqrt(mb));
+    }
+
+    function updateGraph() {
+      const selId = selectEl.property('value');
+      const central = careers.find(c => c.id === selId);
+      const others = careers.filter(c => c.id !== selId);
+
+      // Update central stats
+      const statsDiv = d3.select('#central-stats'); statsDiv.html('');
+      criteria.forEach((crit, i) => statsDiv.append('div').text(`${crit}: ${Math.round(central.ratings[i]*100)}`));
+
+      // Compute distances & build links
+      const distMap = {};
+      others.forEach(c => distMap[c.id] = cosineDistance(central.ratings, c.ratings));
+      distMap[selId] = 0;
+      const perLinks = [];
+      others.forEach(c => {
+        const nearest = others.filter(o => o.id !== c.id)
+          .map(o => ({ id: o.id, dist: cosineDistance(c.ratings, o.ratings) }))
+          .sort((a, b) => a.dist - b.dist).slice(0, 3);
+        nearest.forEach(n => { if (c.id < n.id) perLinks.push({ source: c.id, target: n.id, dist: n.dist }); });
+      });
+      const cenLinks = others.map(c => ({ source: selId, target: c.id, dist: distMap[c.id] }));
+      const links = perLinks.map(l => ({ ...l, type: 'per' })).concat(cenLinks.map(l => ({ ...l, type: 'cen' })));
+      const nodes = [central, ...others];
+
+      // Color scale
+      const vals = Object.values(distMap);
+      const cs = d3.scaleSequential(d3.interpolateViridis).domain([d3.min(vals), d3.max(vals)]);
+
+      svg.selectAll('*').remove();
+
+      const sim = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id)
+          .distance(link => {
+            const raw = link.dist;
+            const adj = Math.pow(raw, 1.5); // scale differences continuously
+            return 100 + adj * 400;
+          }))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('x', d3.forceX(width/2).strength(0.1))
+        .force('y', d3.forceY(height/2).strength(0.1));
+
+      // Draw links
+      svg.append('g').selectAll('line.peripheral')
+        .data(links.filter(l => l.type === 'per')).enter().append('line')
+        .attr('class', 'link peripheral').attr('stroke-width', 2);
+      svg.append('g').selectAll('line.central')
+        .data(links.filter(l => l.type === 'cen')).enter().append('line')
+        .attr('class', 'link central').attr('stroke-width', 3);
+
+      // Draw nodes
+      const nodeElems = svg.append('g').selectAll('circle')
+        .data(nodes).enter().append('circle')
+        .attr('class', 'node').attr('r', d => d.id === selId ? 14 : 10)
+        .attr('fill', d => d.id === selId ? '#ff5722' : cs(distMap[d.id]))
+        .on('click', (e, d) => { selectEl.property('value', d.id); updateGraph(); })
+        .on('mouseover', (e, d) => {
+          const html = `<strong>${d.name}</strong><br>` + criteria.map((c, i) => {
+            const val = Math.round(d.ratings[i] * 100);
+            const diff = val - Math.round(central.ratings[i] * 100);
+            const cls = diff >= 0 ? 'more' : 'less';
+            return `<div>${c}: ${val} <span class='${cls}'>(${diff >= 0 ? '+' : ''}${diff})</span></div>`;
+          }).join('');
+          hoverStats.html(html).style('display', 'block');
+        })
+        .on('mouseout', () => hoverStats.style('display', 'none'))
+        .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
+
+      // Labels
+      svg.append('g').selectAll('text')
+        .data(nodes).enter().append('text')
+        .attr('dy', -15).attr('text-anchor', 'middle').text(d => d.name)
+        .style('font-size', d => d.id === selId ? '1rem' : '0.8rem');
+
+      sim.on('tick', () => {
+        nodes.forEach(d => {
+          d.x = Math.max(10, Math.min(width - 10, d.x));
+          d.y = Math.max(10, Math.min(height - 10, d.y));
+        });
+        svg.selectAll('line.peripheral')
+          .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        svg.selectAll('line.central')
+          .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        nodeElems.attr('cx', d => d.x).attr('cy', d => d.y);
+        svg.selectAll('text').attr('x', d => d.x).attr('y', d => d.y);
+      });
+    }
+
+    function dragstarted(event, d) { if (!event.active) event.subject.fx = event.subject.x, event.subject.fy = event.subject.y; }
+    function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+    function dragended(event, d) { if (!event.active) d.fx = null, d.fy = null; }
+
+    updateGraph();
+  </script>
+</body>
+</html>
