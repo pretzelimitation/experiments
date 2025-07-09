@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Glomerulus Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f8ff;
+    }
+    h1 {
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    svg {
+      width: 600px;
+      height: 400px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    .slider {
+      margin: 10px 0;
+      width: 80%;
+    }
+    .slider label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .blood-dot, .filtrate-dot {
+      r: 4;
+    }
+    .pressure-display {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Renal Glomerulus Simulation</h1>
+  <div class="container">
+    <svg viewBox="0 0 600 400" id="glomerulus-svg">
+      <path id="full-path" d="M50,200 L130,200
+               C160,160 180,240 200,200
+               C220,160 240,240 260,200
+               C280,160 300,240 320,200
+               C340,160 360,240 380,200 L460,200" fill="none" stroke="none"/>
+
+      <line id="aff-line" x1="50" y1="200" x2="130" y2="200" stroke="red" stroke-width="10" />
+      <text x="50" y="190" font-size="12">Afferent</text>
+
+      <path d="M130,200
+               C160,160 180,240 200,200
+               C220,160 240,240 260,200
+               C280,160 300,240 320,200
+               C340,160 360,240 380,200" stroke="red" stroke-width="5" fill="none" />
+
+      <line id="eff-line" x1="380" y1="200" x2="460" y2="200" stroke="red" stroke-width="6" />
+      <text x="420" y="190" font-size="12">Efferent</text>
+
+      <ellipse cx="255" cy="200" rx="160" ry="100" stroke="gray" stroke-width="3" fill="none" />
+    </svg>
+
+    <div class="slider">
+      <label>Afferent Arteriole Radius (vasodilation/constriction): <span id="affRadiusVal">1.0</span>×</label>
+      <input type="range" min="0.5" max="2" value="1.0" step="0.1" id="affRadiusSlider">
+    </div>
+    <div class="slider">
+      <label>Efferent Arteriole Radius: <span id="effRadiusVal">1.0</span>×</label>
+      <input type="range" min="0.5" max="2" value="1.0" step="0.1" id="effRadiusSlider">
+    </div>
+    <div class="slider">
+      <label>Plasma Protein Concentration (affects oncotic pressure): <span id="proteinVal">1.0</span>×</label>
+      <input type="range" min="0.5" max="1.5" value="1.0" step="0.1" id="proteinSlider">
+    </div>
+
+    <div class="pressure-display">
+      <p>Renal Blood Flow (RBF): <span id="rbf">--</span> units</p>
+      <p>Glomerular Capillary Pressure (PGC): <span id="pgcVal">--</span> mmHg</p>
+      <p>Bowman's Space Pressure (PBS): <span id="pbsVal">15</span> mmHg</p>
+      <p>Oncotic Pressure (πGC): <span id="piVal">--</span> mmHg</p>
+      <p>Filtration Fraction (FF): <span id="ff">--</span></p>
+    </div>
+
+    <h3>GFR: <span id="gfr">--</span> mL/min</h3>
+  </div>
+
+  <script>
+    const affRadius = document.getElementById('affRadiusSlider');
+    const effRadius = document.getElementById('effRadiusSlider');
+    const protein = document.getElementById('proteinSlider');
+
+    const affRadiusVal = document.getElementById('affRadiusVal');
+    const effRadiusVal = document.getElementById('effRadiusVal');
+    const proteinVal = document.getElementById('proteinVal');
+
+    const pgcVal = document.getElementById('pgcVal');
+    const pbsVal = document.getElementById('pbsVal');
+    const piVal = document.getElementById('piVal');
+    const gfrOutput = document.getElementById('gfr');
+    const rbfOutput = document.getElementById('rbf');
+    const ffOutput = document.getElementById('ff');
+
+    const affLine = document.getElementById('aff-line');
+    const effLine = document.getElementById('eff-line');
+
+    const svg = document.getElementById("glomerulus-svg");
+    const path = document.getElementById("full-path");
+    const pathLength = path.getTotalLength();
+
+    function calculatePressures() {
+      const aff = parseFloat(affRadius.value);
+      const eff = parseFloat(effRadius.value);
+      const prot = parseFloat(protein.value);
+
+      const rAff = 1 / Math.pow(aff, 4);
+      const rEff = 1 / Math.pow(eff, 4);
+      const totalResistance = rAff + rEff;
+
+      const perfusionPressure = 100;
+      const RBF = perfusionPressure / totalResistance;
+      const PGC = RBF * rEff;
+      const PBS = 15;
+      const pi = 30 * prot;
+
+      const Kf = 12.5;
+      const GFR = Kf * ((PGC - PBS) - pi);
+      const FF = GFR / RBF;
+
+      affRadiusVal.textContent = aff.toFixed(1);
+      effRadiusVal.textContent = eff.toFixed(1);
+      proteinVal.textContent = prot.toFixed(1);
+
+      rbfOutput.textContent = RBF.toFixed(1);
+      pgcVal.textContent = PGC.toFixed(1);
+      pbsVal.textContent = PBS.toFixed(1);
+      piVal.textContent = pi.toFixed(1);
+      gfrOutput.textContent = GFR.toFixed(1);
+      ffOutput.textContent = FF.toFixed(2);
+
+      affLine.setAttribute("stroke-width", (10 * aff).toFixed(1));
+      effLine.setAttribute("stroke-width", (10 * eff).toFixed(1));
+
+      return GFR;
+    }
+
+    function animateParticle(color) {
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("r", 3.5);
+      dot.setAttribute("fill", color === "red" ? "darkred" : "blue");
+      svg.appendChild(dot);
+
+      let startTime = null;
+      const speed = 60;
+      const duration = pathLength / speed * 1000;
+      const filterOut = color === "blue" && Math.random() < 0.5;
+      const filterAt = pathLength * 0.5;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const distance = (elapsed / duration) * pathLength;
+
+        if (filterOut && distance >= filterAt) {
+          const point = path.getPointAtLength(filterAt);
+          dot.setAttribute("cx", point.x);
+          dot.setAttribute("cy", point.y);
+          dot.animate([
+            { transform: 'translateY(0)', opacity: 1 },
+            { transform: 'translateY(100px)', opacity: 0 }
+          ], {
+            duration: 1000,
+            easing: 'ease-out',
+            fill: 'forwards'
+          });
+          setTimeout(() => svg.removeChild(dot), 1200);
+          return;
+        }
+
+        if (distance >= pathLength) {
+          svg.removeChild(dot);
+          return;
+        }
+
+        const point = path.getPointAtLength(distance);
+        dot.setAttribute("cx", point.x);
+        dot.setAttribute("cy", point.y);
+        requestAnimationFrame(step);
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    function launchParticles() {
+      const totalParticles = 30;
+      for (let i = 0; i < totalParticles; i++) {
+        const delay = i * 150;
+        const color = Math.random() < 0.5 ? "red" : "blue";
+        setTimeout(() => animateParticle(color), delay);
+      }
+    }
+
+    affRadius.oninput = effRadius.oninput = protein.oninput = () => calculatePressures();
+    calculatePressures();
+    launchParticles();
+    setInterval(launchParticles, 4000);
+  </script>
+</body>
+</html>
