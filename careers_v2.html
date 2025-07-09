@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Career Similarity Explorer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background-color: #f9f9f9; }
+    #controls { width: 800px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; }
+    select { padding: 6px 10px; font-size: 1rem; margin-right: 8px; }
+    #central-stats { background: rgba(255,255,255,0.8); padding: 8px; border-radius: 4px; font-size: 0.9rem; max-width: 300px; }
+    #legend { background: rgba(255,255,255,0.8); padding: 8px; border-radius: 4px; font-size: 0.9rem; max-width: 200px; margin-top: 8px; }
+    #legend .gradient { height: 10px; margin-bottom: 4px; border-radius: 2px; }
+    #graph { width: 800px; height: 600px; border: 1px solid #ccc; background-color: #fff; cursor: move; }
+    .link { stroke: #aaa; stroke-opacity: 0.6; }
+    .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+    .tooltip { padding: 6px 10px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px; font-size: 0.9rem; max-width: 200px; }
+    #hover-stats { position: absolute; top: 20px; right: 20px; display: none; pointer-events: none; z-index: 10; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div>
+      <select id="career-select"></select>
+      <select id="metric-select"></select>
+      <div id="legend">
+        <div class="gradient"></div>
+        <div style="display: flex; justify-content: space-between;"><span id="min-label">0</span><span id="max-label">1</span></div>
+      </div>
+    </div>
+    <div id="central-stats"></div>
+  </div>
+  <div id="graph-container" style="position: relative;">
+    <svg id="graph"></svg>
+    <div id="hover-stats" class="tooltip"></div>
+  </div>
+
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <script>
+    const width = 800, height = 600, k = 5;
+    const criteria = ['Creativity','Analytical','Social','Physical','Technical','Management','Detail','StressTol','Variety'];
+    const metrics = [...criteria, 'Average Salary', 'Intelligence'];
+    const criterionInterpolators = [
+      d3.interpolateBlues,
+      d3.interpolateReds,
+      d3.interpolateGreens,
+      d3.interpolatePurples,
+      d3.interpolateOranges,
+      d3.interpolateGreys,
+      d3.interpolateYlGnBu,
+      d3.interpolatePuRd,
+      d3.interpolateRdPu
+    ];
+    const careers = [
+      { id:'doctor', name:'Doctor', ratings:[0.2,0.9,0.8,0.3,0.7,0.6,0.9,0.8,0.4], salary:0.85, intelligence:0.9 },
+      { id:'nurse', name:'Nurse', ratings:[0.2,0.8,0.9,0.4,0.6,0.5,0.8,0.9,0.3], salary:0.65, intelligence:0.8 },
+      { id:'software_engineer', name:'Software Engineer', ratings:[0.3,0.95,0.4,0.1,0.9,0.4,0.8,0.6,0.5], salary:0.8, intelligence:0.85 },
+      { id:'data_scientist', name:'Data Scientist', ratings:[0.4,0.9,0.5,0.1,0.9,0.5,0.9,0.5,0.4], salary:0.85, intelligence:0.9 },
+      { id:'teacher', name:'Teacher', ratings:[0.5,0.7,0.9,0.2,0.4,0.7,0.7,0.6,0.6], salary:0.6, intelligence:0.75 },
+      { id:'psychologist', name:'Psychologist', ratings:[0.4,0.8,0.9,0.2,0.5,0.5,0.8,0.7,0.4], salary:0.75, intelligence:0.85 },
+      { id:'mechanic', name:'Mechanic', ratings:[0.1,0.6,0.4,0.9,0.8,0.3,0.7,0.4,0.2], salary:0.55, intelligence:0.65 },
+      { id:'architect', name:'Architect', ratings:[0.9,0.7,0.5,0.2,0.8,0.5,0.9,0.4,0.7], salary:0.75, intelligence:0.8 },
+      { id:'lawyer', name:'Lawyer', ratings:[0.4,0.9,0.7,0.1,0.5,0.8,0.9,0.7,0.3], salary:0.85, intelligence:0.9 },
+      { id:'accountant', name:'Accountant', ratings:[0.2,0.95,0.3,0.1,0.7,0.6,0.95,0.6,0.2], salary:0.7, intelligence:0.85 },
+      { id:'project_manager', name:'Project Manager', ratings:[0.5,0.8,0.9,0.2,0.5,0.9,0.8,0.7,0.5], salary:0.8, intelligence:0.8 },
+      { id:'marketing_manager', name:'Marketing Manager', ratings:[0.7,0.7,0.9,0.2,0.5,0.8,0.7,0.6,0.8], salary:0.8, intelligence:0.75 },
+      { id:'graphic_designer', name:'Graphic Designer', ratings:[0.9,0.5,0.6,0.1,0.6,0.4,0.7,0.4,0.9], salary:0.6, intelligence:0.7 },
+      { id:'civil_engineer', name:'Civil Engineer', ratings:[0.3,0.8,0.4,0.7,0.9,0.5,0.8,0.6,0.3], salary:0.8, intelligence:0.8 },
+      { id:'electrician', name:'Electrician', ratings:[0.2,0.5,0.4,0.9,0.8,0.3,0.7,0.5,0.2], salary:0.6, intelligence:0.65 },
+      { id:'plumber', name:'Plumber', ratings:[0.1,0.5,0.4,0.9,0.7,0.3,0.7,0.5,0.2], salary:0.55, intelligence:0.65 },
+      { id:'chef', name:'Chef', ratings:[0.3,0.6,0.8,0.9,0.4,0.4,0.6,0.6,0.6], salary:0.5, intelligence:0.7 },
+      { id:'pharmacist', name:'Pharmacist', ratings:[0.2,0.9,0.7,0.2,0.7,0.5,0.9,0.7,0.3], salary:0.8, intelligence:0.85 },
+      { id:'veterinarian', name:'Veterinarian', ratings:[0.2,0.8,0.8,0.5,0.6,0.5,0.8,0.7,0.4], salary:0.75, intelligence:0.8 },
+      { id:'pilot', name:'Pilot', ratings:[0.3,0.7,0.5,0.8,0.6,0.6,0.7,0.6,0.5], salary:0.85, intelligence:0.9 },
+      { id:'ux_designer', name:'UX Designer', ratings:[0.8,0.6,0.6,0.1,0.6,0.4,0.8,0.5,0.9], salary:0.8, intelligence:0.75 },
+      { id:'sys_admin', name:'System Administrator', ratings:[0.4,0.8,0.5,0.2,0.9,0.5,0.9,0.7,0.4], salary:0.7, intelligence:0.8 },
+      { id:'biologist', name:'Biologist', ratings:[0.5,0.85,0.4,0.3,0.8,0.4,0.9,0.5,0.6], salary:0.75, intelligence:0.85 },
+      { id:'journalist', name:'Journalist', ratings:[0.7,0.75,0.8,0.3,0.3,0.5,0.7,0.8,0.9], salary:0.6, intelligence:0.75 },
+      { id:'civil_servant', name:'Civil Servant', ratings:[0.3,0.7,0.6,0.2,0.4,0.7,0.8,0.6,0.5], salary:0.65, intelligence:0.7 },
+      { id:'entrepreneur', name:'Entrepreneur', ratings:[0.9,0.8,0.9,0.2,0.5,0.9,0.6,0.9,0.9], salary:0.9, intelligence:0.85 },
+      { id:'real_estate_agent', name:'Real Estate Agent', ratings:[0.4,0.6,0.9,0.2,0.3,0.7,0.5,0.7,0.8], salary:0.7, intelligence:0.7 },
+      { id:'firefighter', name:'Firefighter', ratings:[0.2,0.6,0.8,0.9,0.7,0.5,0.6,0.9,0.7], salary:0.6, intelligence:0.75 },
+      { id:'police_officer', name:'Police Officer', ratings:[0.3,0.7,0.8,0.9,0.6,0.5,0.8,0.9,0.6], salary:0.6, intelligence:0.75 },
+      { id:'dentist', name:'Dentist', ratings:[0.3,0.9,0.7,0.3,0.85,0.4,0.9,0.8,0.4], salary:0.88, intelligence:0.9 },
+      { id:'data_engineer', name:'Data Engineer', ratings:[0.3,0.9,0.5,0.1,0.9,0.5,0.8,0.5,0.4], salary:0.82, intelligence:0.88 },
+      { id:'network_engineer', name:'Network Engineer', ratings:[0.2,0.8,0.4,0.3,0.9,0.4,0.7,0.5,0.3], salary:0.78, intelligence:0.82 },
+      { id:'chemical_engineer', name:'Chemical Engineer', ratings:[0.3,0.85,0.3,0.2,0.9,0.4,0.8,0.5,0.3], salary:0.8, intelligence:0.88 },
+      { id:'research_scientist', name:'Research Scientist', ratings:[0.5,0.9,0.4,0.2,0.8,0.5,0.9,0.4,0.5], salary:0.83, intelligence:0.9 },
+      { id:'social_worker', name:'Social Worker', ratings:[0.4,0.7,0.9,0.2,0.3,0.6,0.7,0.8,0.6], salary:0.55, intelligence:0.78 },
+      { id:'artist', name:'Artist', ratings:[0.9,0.4,0.5,0.1,0.4,0.3,0.6,0.4,0.9], salary:0.4, intelligence:0.7 },
+      { id:'musician', name:'Musician', ratings:[0.8,0.4,0.6,0.1,0.3,0.3,0.5,0.3,0.9], salary:0.4, intelligence:0.7 },
+      { id:'actor', name:'Actor', ratings:[0.8,0.4,0.7,0.1,0.3,0.4,0.5,0.3,0.9], salary:0.5, intelligence:0.75 },
+      { id:'writer', name:'Writer', ratings:[0.9,0.5,0.7,0.1,0.3,0.4,0.6,0.5,0.9], salary:0.6, intelligence:0.8 },
+      { id:'barista', name:'Barista', ratings:[0.3,0.5,0.8,0.4,0.2,0.3,0.6,0.6,0.5], salary:0.35, intelligence:0.6 },
+      { id:'photographer', name:'Photographer', ratings:[0.8,0.5,0.5,0.1,0.4,0.3,0.6,0.4,0.8], salary:0.45, intelligence:0.7 },
+      { id:'translator', name:'Translator', ratings:[0.7,0.6,0.9,0.1,0.3,0.4,0.7,0.5,0.8], salary:0.5, intelligence:0.8 },
+      { id:'data_analyst', name:'Data Analyst', ratings:[0.4,0.9,0.5,0.1,0.9,0.5,0.8,0.5,0.4], salary:0.82, intelligence:0.88 },
+      { id:'ux_researcher', name:'UX Researcher', ratings:[0.8,0.7,0.6,0.1,0.6,0.5,0.8,0.6,0.8], salary:0.78, intelligence:0.82 },
+      { id:'biochemist', name:'Biochemist', ratings:[0.4,0.9,0.5,0.2,0.8,0.4,0.9,0.5,0.6], salary:0.8, intelligence:0.9 },
+      { id:'astronomer', name:'Astronomer', ratings:[0.4,0.9,0.3,0.2,0.8,0.4,0.9,0.4,0.5], salary:0.88, intelligence:0.95 },
+      { id:'economist', name:'Economist', ratings:[0.5,0.95,0.6,0.1,0.5,0.7,0.8,0.6,0.4], salary:0.85, intelligence:0.9 },
+      { id:'urban_planner', name:'Urban Planner', ratings:[0.4,0.8,0.6,0.3,0.7,0.6,0.8,0.5,0.5], salary:0.7, intelligence:0.8 },
+      { id:'geologist', name:'Geologist', ratings:[0.4,0.85,0.5,0.2,0.8,0.4,0.8,0.5,0.5], salary:0.68, intelligence:0.82 },
+      { id:'environmental_scientist', name:'Environmental Scientist', ratings:[0.5,0.85,0.6,0.2,0.8,0.5,0.8,0.7,0.6], salary:0.75, intelligence:0.85 }
+    ];
+
+    // Setup selects and panels
+    const careerSelect = d3.select('#career-select');
+    const metricSelect = d3.select('#metric-select');
+    const statsDiv = d3.select('#central-stats');
+    const hoverStats = d3.select('#hover-stats');
+    const legendGrad = d3.select('#legend .gradient');
+    const minLabel = d3.select('#min-label');
+    const maxLabel = d3.select('#max-label');
+
+    careerSelect.selectAll('option')
+      .data(careers).enter().append('option')
+      .attr('value', d=>d.id).text(d=>d.name);
+    metricSelect.selectAll('option')
+      .data(metrics).enter().append('option')
+      .attr('value',(d,i)=>i).text(d=>d);
+
+    careerSelect.on('change', () => recolorByDistance(careerSelect.property('value')));
+    metricSelect.on('change', () => recolorByMetric(metricSelect.property('value')));
+
+    // Update stats
+    function updateStats(id) {
+      const sel = careers.find(c=>c.id===id);
+      statsDiv.html('');
+      criteria.forEach((crit,i)=>statsDiv.append('div').text(`${crit}: ${Math.round(sel.ratings[i]*100)}%`));
+      statsDiv.append('div').text(`Salary: ${Math.round(sel.salary*100)}%`);
+      statsDiv.append('div').text(`Intelligence: ${Math.round(sel.intelligence*100)}%`);
+    }
+
+    // Compute distances
+    function cosineDistance(a,b){let dot=0,ma=0,mb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];ma+=a[i]*a[i];mb+=b[i]*b[i];}return 1-dot/(Math.sqrt(ma)*Math.sqrt(mb));}
+    const distMatrix = {};
+    careers.forEach(a=>{ distMatrix[a.id]={}; careers.forEach(b=>distMatrix[a.id][b.id]=cosineDistance(a.ratings,b.ratings)); });
+
+    // k-nearest links
+    const links = [];
+    careers.forEach(a=>{
+      const neighbors = careers.filter(b=>b.id!==a.id)
+        .map(b=>({id:b.id,dist:distMatrix[a.id][b.id]}))
+        .sort((x,y)=>x.dist-y.dist).slice(0,k);
+      neighbors.forEach(n=>{ if(a.id<n.id) links.push({source:a.id,target:n.id,dist:n.dist}); });
+    });
+    const nodes = careers.map(c=>Object.assign({},c));
+
+    // SVG + zoom
+    const svg = d3.select('#graph').attr('width',width).attr('height',height);
+    const container = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([0.5,5]).on('zoom',({transform})=>container.attr('transform',transform)));
+
+    // Simulation
+    const sim = d3.forceSimulation(nodes)
+      .force('link',d3.forceLink(links).id(d=>d.id).distance(l=>100+Math.pow(l.dist,1.5)*400))
+      .force('charge',d3.forceManyBody().strength(-300))
+      .force('center',d3.forceCenter(width/2,height/2));
+
+    // Draw links
+    container.append('g').selectAll('line').data(links).enter().append('line')
+      .attr('class','link').attr('stroke','#ddd').attr('stroke-width',1);
+
+    // Draw nodes
+    const nodeElems = container.append('g').selectAll('circle').data(nodes).enter().append('circle')
+      .attr('class','node').attr('r',8)
+      .on('click',(e,d)=>recolorByDistance(d.id))
+      .call(d3.drag().on('start',dragstarted).on('drag',dragged).on('end',dragended));
+
+    // Labels
+    container.append('g').selectAll('text').data(nodes).enter().append('text')
+      .attr('dx',10).attr('dy',4).text(d=>d.name).style('font-size','0.8rem');
+
+    sim.on('tick',()=>{
+      container.selectAll('line').attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+        .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+      nodeElems.attr('cx',d=>d.x).attr('cy',d=>d.y);
+      container.selectAll('text').attr('x',d=>d.x).attr('y',d=>d.y);
+    });
+
+    // Recolor distance
+    function recolorByDistance(id) {
+      const dists = nodes.map(n=>distMatrix[id][n.id]);
+      const minD = d3.min(dists), maxD = d3.max(dists);
+      const color = d3.scaleSequential(d3.interpolateViridis).domain([minD, maxD]);
+      nodeElems.attr('fill', n => color(distMatrix[id][n.id]));
+      legendGrad.style('background', `linear-gradient(to right, ${color(minD)}, ${color(maxD)})`);
+      minLabel.text(minD.toFixed(2)); maxLabel.text(maxD.toFixed(2));
+      updateStats(id);
+    }
+
+    // Recolor metric
+    function recolorByMetric(mi) {
+      const idx = +mi;
+      let colorScale, minV, maxV;
+      if(idx < criteria.length) {
+        colorScale = d3.scaleSequential(criterionInterpolators[idx]).domain([0,1]);
+        minV = 0; maxV = 1;
+        nodeElems.attr('fill', n => colorScale(n.ratings[idx]));
+      } else {
+        const key = metrics[idx] === 'Average Salary' ? 'salary' : 'intelligence';
+        const values = nodes.map(n => n[key]);
+        minV = d3.min(values); maxV = d3.max(values);
+        colorScale = d3.scaleSequential(d3.interpolateOranges).domain([minV, maxV]);
+        nodeElems.attr('fill', n => colorScale(n[key]));
+      }
+      legendGrad.style('background', `linear-gradient(to right, ${colorScale(minV)}, ${colorScale(maxV)})`);
+      minLabel.text(idx < criteria.length ? '0%' : `${Math.round(minV*100)}%`);
+      maxLabel.text(idx < criteria.length ? '100%' : `${Math.round(maxV*100)}%`);
+      statsDiv.html('');
+    }
+
+    // init
+    careerSelect.property('value', careers[0].id);
+    metricSelect.property('value', 0);
+    recolorByDistance(careers[0].id);
+
+    function dragstarted(event,d){ if(!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
+    function dragged(event,d){ d.fx=event.x; d.fy=event.y; }
+    function dragended(event,d){ if(!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }
+  </script>
+</body>
+</html>
