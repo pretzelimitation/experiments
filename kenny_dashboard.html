@@ -1,218 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kenny's Life Dashboard</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f5f7fa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .dashboard {
-            display: grid;
-            grid-template-rows: 2fr 1fr 1fr 1fr;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            width: 95vw;
-            height: 95vh;
-        }
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .card img {
-            width: 100%;
-            border-radius: 12px;
-        }
-        .large {
-            grid-column: span 2;
-        }
-        h2 {
-            margin-top: 0;
-        }
-            /* Editable Content Section – UPDATE THESE VALUES ONLY */
-        const SETTINGS = {
-            mainTask: "Study cardio physiology",
-            uniTerm: "Term 1",
-            uniWeek: "Week 3",
-            location: "Tokyo",
-            showTitle: "Breaking Bad",
-            bookTitle: "The Hobbit",
-            goodreadsLink: "https://www.goodreads.com/book/show/5907.The_Hobbit",
-            practiceSkill: "Piano",
-            practiceSong: "Clair de Lune",
-            quote: "The obstacle is the way."
-        };
-        /* END EDITABLE SECTION */
-        /* --------------------------------------------- */
-        /* Update the placeholder fields below directly. */
-        /* MAIN_TASK, UNI_TERM, UNI_WEEK, LOCATION, WEATHER, TEMP,
-           WATCHING_TITLE, WATCHING_IMAGE, BOOK_TITLE, BOOK_IMAGE,
-           GOODREADS_LINK, PRACTICE_SKILL, PRACTICE_SONG, QUOTE */
-        /* --------------------------------------------- */
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #d6c3a1; /* Neutral light brown */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .dashboard {
-            display: grid;
-            grid-template-rows: 2fr 1fr 1fr 1fr 1fr;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            width: 95vw;
-            height: 95vh;
-        }
-        .card {
-            background: #23452f; /* Dark green */
-            color: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .card img {
-            width: 100%;
-            border-radius: 16px;
-        }
-        .large {
-            grid-column: span 2;
-        }
-        h2 {
-            margin-top: 0;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kenny's Life Dashboard</title>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #d6c3a1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    .dashboard {
+        display: grid;
+        grid-template-rows: 2fr 1fr 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        width: 95vw;
+        height: 95vh;
+    }
+    .card {
+        background: #23452f;
+        color: white;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .card img {
+        width: 100%;
+        border-radius: 12px;
+    }
+    .large { grid-column: span 2; }
+    h2 { margin-top: 0; }
+</style>
 </head>
 <body>
-    <div class="dashboard">
-        <!-- Main Task -->
-        <div class="card large">
-            <h2>Kenny is currently working on...</h2>
-            <p>[Main task for the day/week]</p>
-        </div>
-
-        <!-- Uni Term/Week -->
-        <div class="card">
-            <h2>It is currently...</h2>
-            <p>[Term # / Week # of Uni]</p>
-        </div>
-
-        <!-- Location & Weather -->
-        <div class="card">
-            <h2>Kenny is currently in...</h2>
-            <p>[Location]</p>
-            <p>[Weather + Temperature]</p>
-        </div>
-
-        <!-- Watching -->
-        <div class="card">
-            <h2>Kenny is currently watching...</h2>
-            <img src="[IMAGE_URL]" alt="Show/Movie Image" />
-            <p>[Show/Movie Title]</p>
-        </div>
-
-        <!-- Reading -->
-        <div class="card">
-            <h2>Kenny is currently reading...</h2>
-            <img src="[BOOK_COVER_URL]" alt="Book Cover" />
-            <p><a href="[GOODREADS_LINK]" target="_blank">[Book Title]</a></p>
-        </div>
-
-        <!-- Daily Quote -->
-        <div class="card">
-            <h2>Daily Quote</h2>
-            <p>[Quote of the Day]</p>
-        </div>
-            <!-- Music Practice -->
-        <div class="card">
-            <h2>Kenny is currently practicing...</h2>
-            <p>[PRACTICE_SKILL] on [PRACTICE_SONG]</p>
-        </div>
-
+<div class="dashboard">
+    <div class="card large" id="mainTaskCard">
+        <h2>Kenny is currently working on...</h2>
+        <p id="mainTaskText"></p>
     </div>
-    <script>
-        /* --- API Keys (ADD YOUR KEYS HERE) --- */
-        const TMDB_KEY = "YOUR_TMDB_KEY";
-        const WEATHER_KEY = "YOUR_OPENWEATHER_KEY";
-        const UNSPLASH_KEY = "YOUR_UNSPLASH_KEY";
 
-        /* Use SETTINGS from editable section */
+    <div class="card" id="uniCard">
+        <h2>It is currently...</h2>
+        <p id="uniText"></p>
+    </div>
 
-        /* --- MOVIE/SHOW POSTER (TMDB) --- */
-        async function loadShow() {
-            const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(SETTINGS.showTitle)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.results && data.results.length > 0) {
-                const poster = data.results[0].poster_path;
-                document.getElementById("watchingImg").src =
-                    `https://image.tmdb.org/t/p/w500${poster}`;
-            }
-        }
+    <div class="card" id="locationCard">
+        <h2>Kenny is currently in...</h2>
+        <p id="locationText"></p>
+        <p id="weatherText"></p>
+        <img id="weatherIcon" style="width:60px;" />
+    </div>
 
-        /* --- BOOK COVER (OpenLibrary) --- */
-        async function loadBook() {
-            const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(SETTINGS.bookTitle)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.docs && data.docs[0] && data.docs[0].cover_i) {
-                const coverID = data.docs[0].cover_i;
-                document.getElementById("bookImg").src =
-                    `https://covers.openlibrary.org/b/id/${coverID}-L.jpg`;
-            }
-        }
+    <div class="card" id="watchingCard">
+        <h2>Kenny is currently watching...</h2>
+        <img id="watchingImg" style="width:150px; border-radius:12px; align-self:center;" />
+        <p id="watchingTitle"></p>
+    </div>
 
-        /* --- WEATHER + ICON (OpenWeather) --- */
-        async function loadWeather() {
-            const url = `https://api.openweathermap.org/data/2.5/weather?q=${SETTINGS.location}&appid=${WEATHER_KEY}&units=metric`;
-            const res = await fetch(url);
-            const data = await res.json();
+    <div class="card" id="bookCard">
+        <h2>Kenny is currently reading...</h2>
+        <img id="bookImg" style="width:150px; border-radius:12px; align-self:center;" />
+        <p><a id="bookLink" href="#" target="_blank"><span id="bookTitle"></span></a></p>
+    </div>
 
-            const temp = Math.round(data.main.temp);
-            const desc = data.weather[0].description;
-            const icon = data.weather[0].icon;
+    <div class="card" id="quoteCard">
+        <h2>Daily Quote</h2>
+        <p id="quoteText"></p>
+    </div>
 
-            document.getElementById("weatherText").innerHTML = `${desc}, ${temp}°C`;
-            document.getElementById("weatherIcon").src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
-        }
+    <div class="card" id="practiceCard">
+        <h2>Kenny is currently practicing...</h2>
+        <p id="practiceText"></p>
+    </div>
+</div>
 
-        /* --- CITY IMAGE BACKGROUND (Unsplash) --- */
-        async function loadCityImage() {
-            const url = `https://api.unsplash.com/search/photos?query=${SETTINGS.location}&client_id=${UNSPLASH_KEY}`;
-            const res = await fetch(url);
-            const data = await res.json();
+<script>
+/* ---- SETTINGS (EDIT ONLY THIS SECTION!) ---- */
+const SETTINGS = {
+    mainTask: "Study cardio physiology",
+    uniTerm: "Term 1",
+    uniWeek: "Week 3",
+    location: "Tokyo",
+    showTitle: "Breaking Bad",
+    bookTitle: "The Hobbit",
+    goodreadsLink: "https://www.goodreads.com/book/show/5907.The_Hobbit",
+    practiceSkill: "Piano",
+    practiceSong: "Clair de Lune",
+    quote: "The obstacle is the way."
+};
+/* ----------------------------------------- */
 
-            if (data.results && data.results[0]) {
-                const cityImg = data.results[0].urls.regular;
-                document.getElementById("locationCard").style.backgroundImage = `url('${cityImg}')`;
-                document.getElementById("locationCard").style.backgroundSize = "cover";
-                document.getElementById("locationCard").style.backgroundPosition = "center";
-            }
-        }
+// Insert text immediately
+function insertStaticValues() {
+    document.getElementById("mainTaskText").textContent = SETTINGS.mainTask;
+    document.getElementById("uniText").textContent = `${SETTINGS.uniTerm}, ${SETTINGS.uniWeek}`;
+    document.getElementById("locationText").textContent = SETTINGS.location;
+    document.getElementById("watchingTitle").textContent = SETTINGS.showTitle;
+    document.getElementById("bookTitle").textContent = SETTINGS.bookTitle;
+    document.getElementById("bookLink").href = SETTINGS.goodreadsLink;
+    document.getElementById("practiceText").textContent = `${SETTINGS.practiceSkill} on ${SETTINGS.practiceSong}`;
+    document.getElementById("quoteText").textContent = SETTINGS.quote;
+}
+insertStaticValues();
 
-        /* --- INITIAL LOAD --- */
-        loadShow();
-        loadBook();
-        loadWeather();
-        loadCityImage();
-    </script>
+/* --- API Keys (ADD YOUR KEYS HERE) --- */
+const TMDB_KEY = "YOUR_TMDB_KEY";
+const WEATHER_KEY = "YOUR_OPENWEATHER_KEY";
+const UNSPLASH_KEY = "YOUR_UNSPLASH_KEY";
+
+/* --- MOVIE POSTER --- */
+async function loadShow() {
+    const url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(SETTINGS.showTitle)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+        const poster = data.results[0].poster_path;
+        document.getElementById("watchingImg").src =
+            `https://image.tmdb.org/t/p/w300${poster}`;
+    }
+}
+
+/* --- BOOK COVER --- */
+async function loadBook() {
+    const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(SETTINGS.bookTitle)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.docs?.[0]?.cover_i) {
+        document.getElementById("bookImg").src =
+            `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-L.jpg`;
+    }
+}
+
+/* --- WEATHER --- */
+async function loadWeather() {
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${SETTINGS.location}&appid=${WEATHER_KEY}&units=metric`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.weather) return;
+    document.getElementById("weatherText").textContent =
+        `${data.weather[0].description}, ${Math.round(data.main.temp)}°C`;
+    document.getElementById("weatherIcon").src =
+        `https://openweathermap.org/img/wn/${data.weather[0].icon}.png`;
+}
+
+/* --- CITY IMAGE --- */
+async function loadCityImage() {
+    const url = `https://api.unsplash.com/search/photos?query=${SETTINGS.location}&client_id=${UNSPLASH_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.results?.[0]) {
+        let img = data.results[0].urls.regular;
+        let card = document.getElementById("locationCard");
+        card.style.backgroundImage = `url('${img}')`;
+        card.style.backgroundSize = "cover";
+        card.style.backgroundPosition = "center";
+        card.style.color = "white";
+        card.style.textShadow = "0 0 8px black";
+    }
+}
+
+/* --- DAILY QUOTE --- */
+async function loadQuote() {
+    const res = await fetch("https://api.quotable.io/random");
+    const data = await res.json();
+    document.getElementById("quoteText").textContent = data.content;
+}
+
+/* ---- RUN ALL LOADERS ---- */
+loadShow();
+loadBook();
+loadWeather();
+loadCityImage();
+loadQuote();
+
+async function loadQuote() {
+    const res = await fetch("https://api.quotable.io/random");
+    const data = await res.json();
+    document.getElementById("quoteText").textContent = data.content;
+}
+</script>
 </body>
 </html>
