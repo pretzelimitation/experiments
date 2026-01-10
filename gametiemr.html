@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>4-Player Turn Timer (Tap Anywhere)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; min-height: 100vh; background: #0b1020; color: #eaf0ff; }
+
+    /* Full-screen tap area */
+    #tapArea {
+      min-height: 100vh;
+      padding: 24px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 120ms ease, box-shadow 120ms ease;
+    }
+    /* Solid-ish red overlay when overtime */
+    #tapArea.overtime {
+      background: rgba(255, 40, 40, 0.22);
+      box-shadow: inset 0 0 0 9999px rgba(255, 40, 40, 0.12);
+    }
+
+    .wrap { width: min(1020px, 100%); }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.18);
+      font-size: 12px;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
+    .tapHint { margin-left: auto; opacity: 0.85; font-size: 12px; }
+
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    .grow { flex: 1; min-width: 180px; }
+
+    label { font-size: 12px; opacity: 0.9; display: block; margin-bottom: 6px; }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.25);
+      color: #eaf0ff;
+      outline: none;
+      box-sizing: border-box;
+    }
+    input[type="number"] { max-width: 180px; }
+
+    .timer {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(56px, 8vw, 92px);
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-align: center;
+      margin: 14px 0 0;
+    }
+    .sub {
+      text-align: center;
+      opacity: 0.88;
+      margin: 6px 0 12px;
+      font-size: 14px;
+    }
+
+    .controls { display: flex; justify-content: center; margin-top: 6px; }
+    button {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(120,160,255,0.25);
+      border-color: rgba(120,160,255,0.5);
+      color: #eaf0ff;
+      cursor: pointer;
+      font-weight: 800;
+      min-width: 150px;
+    }
+    button:hover { background: rgba(120,160,255,0.32); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+    .playerBox {
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+    }
+    .active { border-color: rgba(120,160,255,0.65); box-shadow: 0 0 0 2px rgba(120,160,255,0.15) inset; }
+    .pName { font-weight: 800; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .pTime { font-variant-numeric: tabular-nums; font-size: 18px; margin-top: 6px; opacity: 0.95; line-height: 1.25; }
+    .pTime small { opacity: 0.8; font-size: 12px; font-weight: 600; }
+
+    .warn { color: #ffd37a; }
+    .over { color: #ff8a8a; }
+
+    .note {
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: 0.8;
+      line-height: 1.35;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="tapArea" aria-label="Tap anywhere to go to next turn">
+    <div class="wrap">
+      <h1>
+        4-Player Turn Timer
+        <span class="pill">2:00 each turn</span>
+        <span id="roundPill" class="pill">Round: 1</span>
+        <span class="pill tapHint">Tap anywhere → Next turn</span>
+      </h1>
+
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <label>Player 1</label>
+            <input id="p1Name" type="text" value="Player 1" />
+          </div>
+          <div class="grow">
+            <label>Player 2</label>
+            <input id="p2Name" type="text" value="Player 2" />
+          </div>
+          <div class="grow">
+            <label>Player 3</label>
+            <input id="p3Name" type="text" value="Player 3" />
+          </div>
+          <div class="grow">
+            <label>Player 4</label>
+            <input id="p4Name" type="text" value="Player 4" />
+          </div>
+          <div>
+            <label>Seconds per turn</label>
+            <input id="turnSeconds" type="number" min="5" step="5" value="120" />
+          </div>
+        </div>
+
+        <div id="bigTimer" class="timer">02:00</div>
+        <div id="status" class="sub">Running. Tap anywhere to advance turns.</div>
+
+        <div class="controls">
+          <button id="toggleBtn" aria-label="Pause or play">Pause</button>
+        </div>
+
+        <div class="grid">
+          <div id="p1Box" class="playerBox active">
+            <div class="pName"><span id="p1Label">Player 1</span><span class="pill" id="p1Active">Active</span></div>
+            <div class="pTime">
+              Turn time: <span id="p1Time">02:00</span><br />
+              <small>Total time: <span id="p1Total">00:00</span></small>
+            </div>
+          </div>
+          <div id="p2Box" class="playerBox">
+            <div class="pName"><span id="p2Label">Player 2</span><span class="pill" id="p2Active" style="display:none;">Active</span></div>
+            <div class="pTime">
+              Turn time: <span id="p2Time">02:00</span><br />
+              <small>Total time: <span id="p2Total">00:00</span></small>
+            </div>
+          </div>
+          <div id="p3Box" class="playerBox">
+            <div class="pName"><span id="p3Label">Player 3</span><span class="pill" id="p3Active" style="display:none;">Active</span></div>
+            <div class="pTime">
+              Turn time: <span id="p3Time">02:00</span><br />
+              <small>Total time: <span id="p3Total">00:00</span></small>
+            </div>
+          </div>
+          <div id="p4Box" class="playerBox">
+            <div class="pName"><span id="p4Label">Player 4</span><span class="pill" id="p4Active" style="display:none;">Active</span></div>
+            <div class="pTime">
+              Turn time: <span id="p4Time">02:00</span><br />
+              <small>Total time: <span id="p4Total">00:00</span></small>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">
+          When time reaches 0 it keeps going negative (overtime) until you tap to pass the turn.
+          Screen turns red + a beep plays at 0. (Audio often requires at least one tap first.)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- State ---
+    const TOTAL_PLAYERS = 4;
+
+    let activeIndex = 0;
+    let round = 1;
+    let running = true;
+
+    let intervalId = null;
+    let remaining = 120;        // can go negative for overtime
+    let totals = [0, 0, 0, 0];  // cumulative seconds spent by each player
+
+    // flag so we only beep/turn red once when crossing 0
+    let overtimeTriggered = false;
+
+    // --- Elements ---
+    const tapArea = document.getElementById("tapArea");
+    const toggleBtn = document.getElementById("toggleBtn");
+
+    const nameInputs = [
+      document.getElementById("p1Name"),
+      document.getElementById("p2Name"),
+      document.getElementById("p3Name"),
+      document.getElementById("p4Name"),
+    ];
+    const labelEls = [
+      document.getElementById("p1Label"),
+      document.getElementById("p2Label"),
+      document.getElementById("p3Label"),
+      document.getElementById("p4Label"),
+    ];
+    const timeEls = [
+      document.getElementById("p1Time"),
+      document.getElementById("p2Time"),
+      document.getElementById("p3Time"),
+      document.getElementById("p4Time"),
+    ];
+    const totalEls = [
+      document.getElementById("p1Total"),
+      document.getElementById("p2Total"),
+      document.getElementById("p3Total"),
+      document.getElementById("p4Total"),
+    ];
+    const boxEls = [
+      document.getElementById("p1Box"),
+      document.getElementById("p2Box"),
+      document.getElementById("p3Box"),
+      document.getElementById("p4Box"),
+    ];
+    const activePills = [
+      document.getElementById("p1Active"),
+      document.getElementById("p2Active"),
+      document.getElementById("p3Active"),
+      document.getElementById("p4Active"),
+    ];
+
+    const turnSecondsEl = document.getElementById("turnSeconds");
+    const bigTimerEl = document.getElementById("bigTimer");
+    const statusEl = document.getElementById("status");
+    const roundPill = document.getElementById("roundPill");
+
+    // --- Sound (WebAudio beep) ---
+    let audioCtx = null;
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    }
+    function playBeep() {
+      try {
+        ensureAudio();
+        if (!audioCtx) return;
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.35, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.30);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.32);
+      } catch (_) {}
+    }
+
+    // --- Helpers ---
+    function clampInt(n, min, max) {
+      n = Number.parseInt(n, 10);
+      if (Number.isNaN(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function formatSignedMMSS(seconds) {
+      const sign = seconds < 0 ? "-" : "";
+      const abs = Math.abs(seconds);
+      const m = Math.floor(abs / 60);
+      const s = abs % 60;
+      return sign + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+
+    function formatMMSS(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+
+    function getTurnSeconds() {
+      return clampInt(turnSecondsEl.value, 5, 60 * 60);
+    }
+
+    function updateNames() {
+      for (let i = 0; i < TOTAL_PLAYERS; i++) {
+        const name = (nameInputs[i].value || `Player ${i + 1}`).trim();
+        labelEls[i].textContent = name;
+      }
+    }
+
+    function activeName() {
+      return labelEls[activeIndex].textContent || `Player ${activeIndex + 1}`;
+    }
+
+    function setActiveUI() {
+      for (let i = 0; i < TOTAL_PLAYERS; i++) {
+        const isActive = i === activeIndex;
+        boxEls[i].classList.toggle("active", isActive);
+        activePills[i].style.display = isActive ? "inline-block" : "none";
+      }
+    }
+
+    function updateRoundUI() {
+      roundPill.textContent = `Round: ${round}`;
+    }
+
+    function setOvertimeUI(isOvertime) {
+      tapArea.classList.toggle("overtime", isOvertime);
+    }
+
+    function updateTimersUI() {
+      const full = getTurnSeconds();
+
+      bigTimerEl.textContent = formatSignedMMSS(remaining);
+
+      for (let i = 0; i < TOTAL_PLAYERS; i++) {
+        timeEls[i].textContent = (i === activeIndex)
+          ? formatSignedMMSS(remaining)
+          : formatMMSS(full);
+
+        totalEls[i].textContent = formatMMSS(totals[i]);
+      }
+
+      // styling warnings for the big timer
+      bigTimerEl.classList.toggle("warn", remaining <= 10 && remaining > 0);
+      bigTimerEl.classList.toggle("over", remaining <= 0);
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function startInterval() {
+      if (intervalId !== null) return;
+
+      intervalId = setInterval(() => {
+        if (!running) return;
+
+        // tick down (can go negative)
+        remaining -= 1;
+        totals[activeIndex] += 1;
+
+        // Trigger overtime exactly when we cross to 0 (i.e., when remaining becomes 0)
+        if (remaining === 0 && !overtimeTriggered) {
+          overtimeTriggered = true;
+          setOvertimeUI(true);
+          playBeep();
+          setStatus(`Time's up: ${activeName()} (overtime). Tap to pass turn.`);
+        }
+
+        // If already overtime, keep red on and status as overtime
+        if (remaining < 0) {
+          setOvertimeUI(true);
+          if (!statusEl.textContent.includes("overtime")) {
+            setStatus(`Overtime: ${activeName()} — tap to pass turn.`);
+          }
+        }
+
+        updateTimersUI();
+      }, 1000);
+    }
+
+    function resetTurnTimer() {
+      remaining = getTurnSeconds();
+      overtimeTriggered = false;
+      setOvertimeUI(false);
+      updateTimersUI();
+    }
+
+    function advanceTurn() {
+      const nextIndex = (activeIndex + 1) % TOTAL_PLAYERS;
+
+      if (nextIndex === 0) {
+        round += 1;
+        updateRoundUI();
+      }
+
+      activeIndex = nextIndex;
+      setActiveUI();
+      resetTurnTimer();
+
+      setStatus(running
+        ? `Running: ${activeName()} (tap anywhere for next)`
+        : `Paused on: ${activeName()}`
+      );
+    }
+
+    function isInteractiveElement(el) {
+      return !!el.closest("input, button, label, a, textarea, select");
+    }
+
+    function setRunning(newRunning) {
+      running = newRunning;
+      toggleBtn.textContent = running ? "Pause" : "Play";
+      toggleBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+
+      if (!running) {
+        setStatus(`Paused on: ${activeName()}`);
+      } else {
+        // if resuming while overtime, keep overtime messaging
+        if (remaining <= 0) {
+          setStatus(`Overtime: ${activeName()} — tap to pass turn.`);
+          setOvertimeUI(true);
+          if (remaining === 0 && !overtimeTriggered) {
+            overtimeTriggered = true;
+            playBeep();
+          }
+        } else {
+          setStatus(`Running: ${activeName()} (tap anywhere for next)`);
+        }
+      }
+    }
+
+    // --- Events ---
+    tapArea.addEventListener("pointerdown", (e) => {
+      if (isInteractiveElement(e.target)) return;
+      ensureAudio(); // unlock audio on first gesture
+      updateNames();
+      advanceTurn();
+    });
+
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      ensureAudio();
+      updateNames();
+      setRunning(!running);
+    });
+
+    nameInputs.forEach((inp) => inp.addEventListener("input", updateNames));
+
+    // Changing turn length: apply immediately if NOT overtime; if overtime, keep negative counting,
+    // but update what "full" time displays for inactive players.
+    turnSecondsEl.addEventListener("change", (e) => {
+      e.stopPropagation();
+      ensureAudio();
+      updateNames();
+      if (remaining > 0) {
+        resetTurnTimer();
+        setStatus(running ? `Running: ${activeName()} (tap anywhere for next)` : `Paused on: ${activeName()}`);
+      } else {
+        // don't alter current overtime/remaining; just refresh UI
+        updateTimersUI();
+      }
+    });
+
+    // --- Init ---
+    updateNames();
+    setActiveUI();
+    updateRoundUI();
+    resetTurnTimer();
+    setRunning(true);
+    startInterval();
+  </script>
+</body>
+</html>
